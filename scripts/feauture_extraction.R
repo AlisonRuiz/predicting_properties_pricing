@@ -102,3 +102,26 @@ train_original_dscrptin_ftrs <- train_original %>%
   ) %>% 
   select(-ends_with(c("_title","_description")))
   
+
+# Obtener amenitie "bus_station" de Bogotá
+osm = opq(bbox = getbb("Bogotá")) %>%
+  add_osm_feature(key="amenity" , value="bus_station") 
+class(osm)
+# obtener datos de entrenamiento en Bogotá
+houses <- st_as_sf(x = train_original_dscrptin_ftrs, ## datos
+                   coords=c("lon","lat"), ## coordenadas
+                   crs=4326) ## CRS
+
+bogota <- getbb(place_name = "Bogota", 
+                   featuretype = "boundary:administrative", 
+                   format_out = "sf_polygon") %>% .$multipolygon
+
+# obtener distancias
+osm_sf = osm %>% osmdata_sf()
+osm_sf
+bus_station = osm_sf$osm_points %>% select(osm_id,amenity) 
+bus_station
+matrix_dist_bus <- st_distance(x=houses , y=bus_station)
+# Obtener distancia mas cercana entre propiedad y amenity
+min_dist_bus <- apply(matrix_dist_bus , 1 , min)
+train_original_dscrptin_ftrs$d_bus_station = min_dist_bus
