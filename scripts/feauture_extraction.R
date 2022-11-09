@@ -103,25 +103,42 @@ train_original_dscrptin_ftrs <- train_original %>%
   select(-ends_with(c("_title","_description")))
   
 
-# Obtener amenitie "bus_station" de Bogotá
-osm = opq(bbox = getbb("Bogotá")) %>%
-  add_osm_feature(key="amenity" , value="bus_station") 
-class(osm)
-# obtener datos de entrenamiento en Bogotá
-houses <- st_as_sf(x = train_original_dscrptin_ftrs, ## datos
-                   coords=c("lon","lat"), ## coordenadas
-                   crs=4326) ## CRS
+# Calculo de distancias mínima de propiedades a amenities
+distance_amenity_calculator <- function(amenity_variable){
+  # amenities en medellín
+  osm_med = opq(bbox = getbb("Medellin")) %>%
+    add_osm_feature(key="amenity", value=amenity_variable) 
+  class(osm_med)
+  # amenities en bogotá
+  osm_bog = opq(bbox = getbb("Bogotá")) %>%
+    add_osm_feature(key="amenity", value=amenity_variable) 
+  class(osm_bog)
+  # coordenadas de cada propiedad
+  houses <- st_as_sf(x = train_original_dscrptin_ftrs, 
+                     coords=c("lon","lat"), 
+                     crs=4326) 
+  # cálculo de distancia mínima de amenities de medellín con las propiedades
+  osm_sf_med = osm_med %>% osmdata_sf()
+  amenitie_location_med = osm_sf_med$osm_points %>% select(osm_id,amenity) 
+  matrix_dist_med <- st_distance(x=houses , y=amenitie_location_med)
+  min_dist_med <- apply(matrix_dist_med , 1 , min)
+  # cálculo de distancia mínima de amenities de bogotá con las propiedades
+  osm_sf_bog = osm_bog %>% osmdata_sf()
+  amenitie_location_bog = osm_sf_bog$osm_points %>% select(osm_id,amenity) 
+  matrix_dist_bog <- st_distance(x=houses , y=amenitie_location_bog)
+  min_dist_bog <- apply(matrix_dist_bog , 1 , min)
+  # creación de data frame con datos de distancia minimos calculados en medellín y bogotá
+  global_dist <- data.frame(a=c(min_dist_med), b=c(min_dist_bog))
+  # distancia mínima entre las columnas del data frame (medellín y bogotá)
+  min_dist <- apply(global_dist,1, min)
+  return(min_dist)
+}
+# amenities
+amenities_variables = c("bus_station", "school", "university", "police", "bar", "hospital", "kindergarten", "waste_disposal", "cinema", "prison", "marketplace", "restaurant")
+# se llama la función de cálculo de distancia para cada amenity y se almacena en columnas nuevas
+for(amenity_variable in amenities_variables){
+  min_dist <- distance_amenity_calculator(amenity_variable = amenity_variable)
+  train_original_dscrptin_ftrs[[amenity_variable]] = min_dist
+}
 
-bogota <- getbb(place_name = "Bogota", 
-                   featuretype = "boundary:administrative", 
-                   format_out = "sf_polygon") %>% .$multipolygon
 
-# obtener distancias
-osm_sf = osm %>% osmdata_sf()
-osm_sf
-bus_station = osm_sf$osm_points %>% select(osm_id,amenity) 
-bus_station
-matrix_dist_bus <- st_distance(x=houses , y=bus_station)
-# Obtener distancia mas cercana entre propiedad y amenity
-min_dist_bus <- apply(matrix_dist_bus , 1 , min)
-train_original_dscrptin_ftrs$d_bus_station = min_dist_bus
