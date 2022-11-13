@@ -104,29 +104,34 @@ train_original_dscrptin_ftrs <- train_original %>%
   
 
 # Calculo de distancias mínima de propiedades a amenities
-distance_amenity_calculator <- function(kind_of_variable,value_of_variable){
-  # amenities en medellín
-  osm_med = opq(bbox = getbb("Medellin")) %>%
+distance_amenity_calculator <- function(city,kind_of_variable,value_of_variable,data){
+  # calculo de amenities en la ciudad requerida
+  osm = opq(bbox = getbb(city)) %>%
     add_osm_feature(key=kind_of_variable, value=value_of_variable) 
-  class(osm_med)
-  # amenities en bogotá
-  osm_bog = opq(bbox = getbb("Bogota")) %>%
-    add_osm_feature(key=kind_of_variable, value=value_of_variable) 
-  class(osm_bog)
+  class(osm)
   # coordenadas de cada propiedad
-  houses <- st_as_sf(x = train_original_dscrptin_ftrs, 
+  houses <- st_as_sf(x = data, 
                      coords=c("lon","lat"), 
                      crs=4326) 
-  # cálculo de distancia mínima de amenities de medellín con las propiedades
-  osm_sf_med = osm_med %>% osmdata_sf()
-  amenitie_location_med = osm_sf_med$osm_points %>% select(osm_id,as.factor(kind_of_variable)) 
-  matrix_dist_med <- st_distance(x=houses , y=amenitie_location_med)
-  min_dist_med <- apply(matrix_dist_med , 1 , min)
-  # cálculo de distancia mínima de amenities de bogotá con las propiedades
-  osm_sf_bog = osm_bog %>% osmdata_sf()
-  amenitie_location_bog = osm_sf_bog$osm_points %>% select(osm_id,as.factor(kind_of_variable)) 
-  matrix_dist_bog <- st_distance(x=houses , y=amenitie_location_bog)
-  min_dist_bog <- apply(matrix_dist_bog , 1 , min)
+  # cálculo de distancia mínima de amenities con las propiedades
+  osm_sf = osm %>% osmdata_sf()
+  amenitie_location = osm_sf$osm_points %>% select(osm_id,as.factor(kind_of_variable)) 
+  matrix_dist <- st_distance(x=houses , y=amenitie_location)
+  min_dist <- apply(matrix_dist , 1 , min)
+  return(min_dist)
+}
+
+# asigna a data de entrenamiento las distancias mínimas de amenities a propiedades (Med-Bog)
+distances_comparator <- function(kind_of_variable,value_of_variable, data){
+  # calculo de distancias para Medellín y Bogotá
+  min_dist_med <- distance_amenity_calculator(city= "Medellín",
+                                              kind_of_variable=kind_of_variable,
+                                              value_of_variable = value_of_variable,
+                                              data = train_original_dscrptin_ftrs)
+  min_dist_bog <- distance_amenity_calculator(city= "Bogotá",
+                                              kind_of_variable=kind_of_variable,
+                                              value_of_variable = value_of_variable, 
+                                              data= train_original_dscrptin_ftrs)
   # creación de data frame con datos de distancia minimos calculados en medellín y bogotá
   global_dist <- data.frame(a=c(min_dist_med), b=c(min_dist_bog))
   # distancia mínima entre las columnas del data frame (medellín y bogotá)
@@ -140,15 +145,33 @@ names(spatial_variables) <- c("highway", "amenity", "building")
 spatial_variables[[1]] <- c("primary"); 
 spatial_variables[[2]] <- c("bus_station","cinema","school", "university",
                             "police","bar","hospital","kindergarten","waste_disposal",
-                            "prison","marketplace","restaurant","theatre","clinic",
+                            "marketplace","restaurant","theatre","clinic",
                             "events_venue", "language_school", "love_hotel"); 
 spatial_variables[[3]] <- c("industrial", "commercial", "office")
 
-# Se llama distance_amenity_calculator() para cada variable y se agregan distancias al dataframe
+# llamar distances_comparator() para cada variable y agregarlo al dataframe de train (Bog-Med)
 len_kind_of_variables = c(1,2,3)
 for(n_variable in len_kind_of_variables){
   for(key_variable in spatial_variables[[names(spatial_variables[n_variable])]]){
-    min_dist <- distance_amenity_calculator(kind_of_variable=names(spatial_variables[n_variable]),value_of_variable = key_variable)
+    min_dist <- distances_comparator(kind_of_variable=names(spatial_variables[n_variable]),
+                                     value_of_variable = key_variable, 
+                                     data = train_original_dscrptin_ftrs)
     train_original_dscrptin_ftrs[[key_variable]] = min_dist
+  }
+}
+
+
+test_with_amenities <- test_original
+# llamar distance_amenity_calculator() para cada variable y agregarlo al dataframe de test(Cali)
+len_kind_of_variables = c(1,2,3)
+for(n_variable in len_kind_of_variables){
+  print(n_variable)
+  for(key_variable in spatial_variables[[names(spatial_variables[n_variable])]]){
+    print(key_variable)
+    amenities_cali <- distance_amenity_calculator(city="Cali",
+                                                  kind_of_variable=names(spatial_variables[n_variable]),
+                                                  value_of_variable = key_variable, 
+                                                  data = test_original)
+    test_with_amenities[[key_variable]] = amenities_cali
   }
 }
