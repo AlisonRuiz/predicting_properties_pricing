@@ -73,18 +73,19 @@ POC_ALL=(cbind(POC_ALL,dummy_POC_ALL))
 POC_ALL[is.na(POC_ALL)] <- 0
 
 train<- POC_ALL %>% filter(city=="BogotÃ¡ D.C")
+train<- train %>% filter(price<800000000)
 train<- select(train,-city,-property_id,-lat,-lon)
 
-train<- select(train,price,surface_total)
+#train<- select(train,price,surface_total)
 
 
 Test<- POC_ALL %>% filter(city=="MedellÃ­n")
 Test<- select(Test,-city,-property_id,-lat,-lon)
 
-Test<- select(Test,price,surface_total)
+#Test<- select(Test,price,surface_total)
 
-as.data.frame(sapply(POC_ALL,class))
-saveRDS(POC_ALL, file = "C:/Users/ABI/Documents/1_Maestria/5_Machine_Learning/R_Andes/Taller_3/Base_Completa.rds")
+#as.data.frame(sapply(POC_ALL,class))
+#saveRDS(POC_ALL, file = "C:/Users/ABI/Documents/1_Maestria/5_Machine_Learning/R_Andes/Taller_3/Base_Completa.rds")
 
 
 ## 2. Entrenamiento XGBoost---------------------------------------------------------
@@ -110,10 +111,9 @@ val_xg <-
 
 modelo_01=xgboost(data = train_xg, 
         objective = "reg:squarederror",
-        nrounds = 100, max.depth = 4, eta = 0.4, nthread = 2,gamma=0)
+        nrounds = 100, max.depth = 3, eta = 0.8, nthread = 2,gamma=0)
 
-modelo_01 <- xgboost(data = train_xg, 
-                     objective = "reg:tweedie")
+
 
 predict_01 <- predict(modelo_01, val_xg)
 
@@ -123,7 +123,3 @@ compra$factor=abs(compra$V1-compra$predict_01)
 compra$comp=ifelse(compra$factor<=40000000, 1, 0)
 a=as.data.frame(table(compra$comp))
 a
-
-
-
-
