@@ -73,7 +73,7 @@ POC_ALL=(cbind(POC_ALL,dummy_POC_ALL))
 POC_ALL[is.na(POC_ALL)] <- 0
 
 train<- POC_ALL %>% filter(city=="BogotÃ¡ D.C")
-train<- train %>% filter(price<800000000)
+train<- train %>% filter(price<1000000000)
 train<- select(train,-city,-property_id,-lat,-lon)
 
 #train<- select(train,price,surface_total)
@@ -83,6 +83,7 @@ Test<- POC_ALL %>% filter(city=="MedellÃ­n")
 Test<- select(Test,-city,-property_id,-lat,-lon)
 
 val_fin<- POC_ALL %>% filter(city=="Cali")
+val_fin_id=as.data.frame(val_fin$property_id)
 val_fin<- select(val_fin,-city,-property_id,-lat,-lon)
 
 
@@ -123,22 +124,23 @@ val_fin_xg <-
 
 modelo_01=xgboost(data = train_xg, 
         objective = "reg:squarederror",
-        nrounds = 100, max.depth = 3, eta = 0.8, nthread = 2,gamma=0)
+        nrounds = 100, max.depth = 3, eta = 0.8, nthread = 1,gamma=0)
 
 
 
 predict_01 <- predict(modelo_01, val_xg)
 
+pred=predict_01
+obs=Test$price
+
+dataprep=as.data.frame(cbind(pred,obs))
+pct_propcomp_valprop(data = dataprep)
+
 compra=as.data.frame(cbind(Test$price,predict_01))
 compra$factor=abs(compra$V1-compra$predict_01)
 
-compra$comp=ifelse(compra$factor<=40000000, 1, 0)
-a=as.data.frame(table(compra$comp))
-a
-
-modelo_01 <- xgboost(data = train_xg, 
-                     objective = "reg:tweedie")
-
-
 
 predict_01 <- predict(modelo_01, val_fin_xg)
+exam_final=cbind(val_fin_id,predict_01)
+
+write.csv(exam_final,"./cali_predicción.csv", row.names = FALSE)
