@@ -82,6 +82,11 @@ train<- select(train,-city,-property_id,-lat,-lon)
 Test<- POC_ALL %>% filter(city=="MedellÃ­n")
 Test<- select(Test,-city,-property_id,-lat,-lon)
 
+val_fin<- POC_ALL %>% filter(city=="Cali")
+val_fin<- select(val_fin,-city,-property_id,-lat,-lon)
+
+
+
 #Test<- select(Test,price,surface_total)
 
 #as.data.frame(sapply(POC_ALL,class))
@@ -107,6 +112,13 @@ val_xg <-
   xgb.DMatrix(data = ., label = Test$price)
 
 
+val_fin_xg <- 
+  val_fin %>% 
+  select(-price) %>% 
+  as.matrix() %>% 
+  xgb.DMatrix(data = ., label = val_fin$price)
+
+
 ## 2.4 Encontrar variables importantes--------------------------------------------
 
 modelo_01=xgboost(data = train_xg, 
@@ -123,3 +135,10 @@ compra$factor=abs(compra$V1-compra$predict_01)
 compra$comp=ifelse(compra$factor<=40000000, 1, 0)
 a=as.data.frame(table(compra$comp))
 a
+
+modelo_01 <- xgboost(data = train_xg, 
+                     objective = "reg:tweedie")
+
+
+
+predict_01 <- predict(modelo_01, val_fin_xg)
