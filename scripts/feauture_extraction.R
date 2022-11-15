@@ -16,6 +16,7 @@ library(here)
 # CARGAR DATOS ------------------------------------------------------------
 
 
+
 train_original <- readRDS(here("stores","train.Rds"))
 test_original <- readRDS(here("stores","test.Rds"))
 
@@ -404,6 +405,8 @@ colSums(is.na(test_original_dscrptin_ftrs_2_2))
 
 
 # IMPUTACION --------------------------------------------------------------
+
+#manzanas (por limite del repositorio): https://drive.google.com/drive/folders/1KvvhbJi3YKJuAu2zNy6j1jBog7LXfsE1?usp=share_link
 manzanas <- st_read(here("stores","MGN_URB_MANZANA.shp"))
 
 
